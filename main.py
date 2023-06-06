@@ -13,7 +13,7 @@ class Post(BaseModel):
     published: bool = True
     rating: Optional[int] = None
 
-# s
+
 @app.get("/")
 def root():
     return {"message": "Welcome to my API!!!"}
@@ -24,8 +24,8 @@ def get_post():
     return {"data": "This is your post"}
 
 
-@app.post("/createposts")
-def create_posts(new_post: Post):
-    print(new_post)
-    return {"data": "new post"}
+@app.post("/posts")
+def create_posts(post: Post):
+    print(post)
+    return {"data": "post"}
 # title str, content str, category, Boolean published/draft
