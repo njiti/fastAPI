@@ -13,7 +13,7 @@ class Post(BaseModel):
     published: bool = True
     rating: Optional[int] = None
 
-
+# s
 @app.get("/")
 def root():
     return {"message": "Welcome to my API!!!"}
