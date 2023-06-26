@@ -1,24 +1,15 @@
 import time
+
 import psycopg2
 from fastapi import FastAPI, Response, status, HTTPException, Depends
 from psycopg2.extras import RealDictCursor
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy.testing import db
-
-from app import models
+from app import models, schemas, utils
 from app.database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
-
 
 while True:
     try:
@@ -64,17 +55,17 @@ def root():
 
 
 # all posts
-@app.get("/posts")
+@app.get("/posts", response_model=list[schemas.Post])
 def get_posts(db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts""")
     # posts = cursor.fetchall()
     posts = db.query(models.Post).all()
-    return {"data": posts}
+    return posts
 
 
 # create a post
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_posts(post: Post, db: Session = Depends(get_db)):
+@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model=schemas.Post)
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
     #                (post.title, post.content, post.published))
     # new_post = cursor.fetchone()
@@ -83,11 +74,11 @@ def create_posts(post: Post, db: Session = Depends(get_db)):
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
-    return {"data": new_post}
+    return new_post
 
 
 # Fetching individual post
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schemas.Post)
 def get_post(id: int, db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * from posts WHERE id = %s """, (str(id),))
     # post = cursor.fetchone()
@@ -116,8 +107,8 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 # update post
-@app.put("/posts/{id}")
-def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
+@app.put("/posts/{id}", response_model=schemas.Post)
+def update_post(id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)):
     # cursor.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
     #                (post.title, post.content, post.published, str(id),))
     #
@@ -132,4 +123,19 @@ def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
     post_query.update(updated_post.dict(), synchronize_session=False)
     db.commit()
 
-    return {"data": post_query.first()}
+    return post_query.first()
+
+
+# create user
+@app.post("/create_user", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # hash the password - user.password
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
+
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
